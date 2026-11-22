@@ -1,7 +1,8 @@
 import { Link, Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Gauge } from '@/components/gauge';
 import { ProgressBar } from '@/components/progress-bar';
 import { useGoals } from '@/lib/goals-store';
@@ -15,6 +16,7 @@ export default function GoalScreen() {
   const colors = useColors();
   const goal = getGoal(id);
   const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (!goal) {
     return (
@@ -27,18 +29,12 @@ export default function GoalScreen() {
   const progress = goalProgress(goal);
   const next = nextStep(goal);
 
-  const confirmDelete = () =>
-    Alert.alert('Delete this goal?', 'Its milestones and steps will be removed too.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          deleteGoal(goal.id);
-          router.back();
-        },
-      },
-    ]);
+  const deleteAndLeave = () => {
+    setConfirmingDelete(false);
+    deleteGoal(goal.id);
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
 
   const submitMilestone = () => {
     if (!milestoneTitle.trim()) return;
@@ -52,11 +48,19 @@ export default function GoalScreen() {
         options={{
           title: '',
           headerRight: () => (
-            <Pressable onPress={confirmDelete} accessibilityRole="button" hitSlop={8}>
+            <Pressable onPress={() => setConfirmingDelete(true)} accessibilityRole="button" hitSlop={8}>
               <Text style={{ color: colors.danger, fontSize: 15 }}>Delete</Text>
             </Pressable>
           ),
         }}
+      />
+      <ConfirmDialog
+        visible={confirmingDelete}
+        title="Delete this goal?"
+        message={`"${goal.title}" and all its milestones and steps will be removed. This can't be undone.`}
+        confirmLabel="Delete"
+        onConfirm={deleteAndLeave}
+        onCancel={() => setConfirmingDelete(false)}
       />
       <Text style={[styles.title, { color: colors.text }]}>{goal.title}</Text>
       {goal.why ? <Text style={[styles.why, { color: colors.muted }]}>{goal.why}</Text> : null}

@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 
 import { Gauge } from '@/components/gauge';
 import { useGoals } from '@/lib/goals-store';
-import { formatTargetDate, goalProgress, nextStep } from '@/lib/progress';
+import { formatTargetDate, goalProgress, nextStep, overallProgress } from '@/lib/progress';
 import { useColors } from '@/lib/theme';
 import type { Goal } from '@/lib/types';
 
@@ -26,6 +26,7 @@ export default function HomeScreen() {
         keyExtractor={(g) => g.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => <GoalCard goal={item} />}
+        ListHeaderComponent={goals.length > 0 ? <OverallCard goals={goals} /> : undefined}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: colors.muted }]}>
             No goals yet. Tap New goal to set your first one.
@@ -37,6 +38,35 @@ export default function HomeScreen() {
           <Text style={styles.fabText}>+ New goal</Text>
         </Pressable>
       </Link>
+    </View>
+  );
+}
+
+function OverallCard({ goals }: { goals: Goal[] }) {
+  const colors = useColors();
+  const overall = overallProgress(goals);
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={[styles.overall, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.overallLabel, { color: colors.muted }]}>OVERALL PROGRESS</Text>
+        <Gauge ratio={overall.ratio} size={220} label="Overall progress across all goals" />
+        <View style={styles.stats}>
+          <Stat value={String(overall.goals)} label={overall.goals === 1 ? 'goal' : 'goals'} />
+          <Stat value={String(overall.completedGoals)} label="complete" />
+          <Stat value={`${overall.stepsDone}/${overall.stepsTotal}`} label="steps done" />
+        </View>
+      </View>
+      <Text style={[styles.section, { color: colors.text }]}>Your goals</Text>
+    </View>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  const colors = useColors();
+  return (
+    <View style={styles.stat}>
+      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+      <Text style={{ color: colors.muted, fontSize: 13 }}>{label}</Text>
     </View>
   );
 }
@@ -70,6 +100,12 @@ function GoalCard({ goal }: { goal: Goal }) {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  overall: { borderWidth: 1, borderRadius: 16, paddingVertical: 18, paddingHorizontal: 14, alignItems: 'center', gap: 10 },
+  overallLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  stats: { flexDirection: 'row', alignSelf: 'stretch', justifyContent: 'space-around', marginTop: 4 },
+  stat: { alignItems: 'center' },
+  statValue: { fontSize: 20, fontWeight: '700' },
+  section: { fontSize: 17, fontWeight: '600', marginTop: 8 },
   list: { padding: 16, gap: 12, paddingBottom: 96 },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 15 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 14, borderWidth: 1 },

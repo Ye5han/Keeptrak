@@ -38,3 +38,24 @@ export function isValidIsoDate(value: string): boolean {
   const date = new Date(Date.UTC(y, m - 1, d));
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
+
+export type Overall = {
+  /** Average of each goal's progress, so every goal counts equally. */
+  ratio: number;
+  goals: number;
+  completedGoals: number;
+  stepsDone: number;
+  stepsTotal: number;
+};
+
+export function overallProgress(goals: Goal[]): Overall {
+  const withSteps = goals.map(goalProgress).filter((p) => p.total > 0);
+  const ratio = withSteps.length === 0 ? 0 : withSteps.reduce((sum, p) => sum + p.ratio, 0) / withSteps.length;
+  return {
+    ratio,
+    goals: goals.length,
+    completedGoals: withSteps.filter((p) => p.done === p.total).length,
+    stepsDone: withSteps.reduce((n, p) => n + p.done, 0),
+    stepsTotal: withSteps.reduce((n, p) => n + p.total, 0),
+  };
+}
