@@ -3,10 +3,10 @@ import Svg, { Path } from 'react-native-svg';
 
 import { useColors } from '@/lib/theme';
 
-type Props = { ratio: number; size?: number; label?: string };
+type Props = { ratio: number; size?: number; label?: string; color?: string; centerText?: string };
 
 /** A half-circle gauge that fills from left to right as steps get done. */
-export function Gauge({ ratio, size = 160, label }: Props) {
+export function Gauge({ ratio, size = 160, label, color: colorOverride, centerText }: Props) {
   const colors = useColors();
   const clamped = Math.max(0, Math.min(1, ratio));
   const stroke = Math.max(8, size * 0.09);
@@ -25,7 +25,7 @@ export function Gauge({ ratio, size = 160, label }: Props) {
   const track = `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`;
   const fill = `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${fillEnd.x} ${fillEnd.y}`;
   const percent = Math.round(clamped * 100);
-  const color = clamped >= 1 ? colors.done : colors.accent;
+  const color = colorOverride ?? (clamped >= 1 ? colors.done : colors.accent);
 
   return (
     <View
@@ -41,7 +41,7 @@ export function Gauge({ ratio, size = 160, label }: Props) {
         )}
       </Svg>
       <View style={[styles.center, { top: height - size * 0.28 }]}>
-        <Text style={{ color: colors.text, fontSize: size * 0.2, fontWeight: '700' }}>{percent}%</Text>
+        <Text style={{ color: colors.text, fontSize: size * 0.2, fontWeight: '700' }}>{centerText ?? `${percent}%`}</Text>
       </View>
     </View>
   );

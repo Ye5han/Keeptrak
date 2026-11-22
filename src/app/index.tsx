@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Gauge } from '@/components/gauge';
+import { bandOf, disciplineScore, type Band } from '@/lib/discipline';
 import { useGoals } from '@/lib/goals-store';
 import { formatTargetDate, goalProgress, nextStep, overallProgress } from '@/lib/progress';
 import { useColors } from '@/lib/theme';
@@ -56,7 +57,52 @@ function OverallCard({ goals }: { goals: Goal[] }) {
           <Stat value={`${overall.stepsDone}/${overall.stepsTotal}`} label="steps done" />
         </View>
       </View>
+      <DisciplineCard goals={goals} />
       <Text style={[styles.section, { color: colors.text }]}>Your goals</Text>
+    </View>
+  );
+}
+
+const BAND_TEXT: Record<Band, string> = {
+  red: 'Slipping: one step per goal each day gets you back',
+  yellow: 'Getting there: aim for one step per goal daily',
+  green: 'On track: keep showing up',
+};
+
+function DisciplineCard({ goals }: { goals: Goal[] }) {
+  const colors = useColors();
+  const score = disciplineScore(goals);
+  const tone = (band: Band | null) => (band ? colors[band] : colors.track);
+  const dayLetter = (day: string) => ['S', 'M', 'T', 'W', 'T', 'F', 'S'].at(new Date(`${day}T12:00:00`).getDay());
+  return (
+    <View style={[styles.overall, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[styles.overallLabel, { color: colors.muted }]}>DISCIPLINE · LAST 7 DAYS</Text>
+      <Gauge
+        ratio={score.ratio ?? 0}
+        size={180}
+        color={tone(score.band)}
+        centerText={score.ratio === null ? '–' : undefined}
+        label="Discipline score"
+      />
+      <Text style={{ color: colors.text, fontSize: 15, textAlign: 'center' }}>
+        {score.band ? BAND_TEXT[score.band] : 'Tick a step today to start your score'}
+      </Text>
+      <Text style={{ color: colors.muted, fontSize: 13 }}>
+        Today: {score.today.hit} of {score.today.active} {score.today.active === 1 ? 'goal' : 'goals'} moved forward
+      </Text>
+      <View style={styles.days}>
+        {score.days.map((d) => (
+          <View key={d.day} style={styles.day}>
+            <View
+              style={[
+                styles.dot,
+                { backgroundColor: d.active === 0 ? colors.track : tone(bandOf(d.hit / d.active)) },
+              ]}
+            />
+            <Text style={{ color: colors.muted, fontSize: 12 }}>{dayLetter(d.day)}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -105,6 +151,9 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', alignSelf: 'stretch', justifyContent: 'space-around', marginTop: 4 },
   stat: { alignItems: 'center' },
   statValue: { fontSize: 20, fontWeight: '700' },
+  days: { flexDirection: 'row', gap: 14, marginTop: 4 },
+  day: { alignItems: 'center', gap: 4 },
+  dot: { width: 14, height: 14, borderRadius: 7 },
   section: { fontSize: 17, fontWeight: '600', marginTop: 8 },
   list: { padding: 16, gap: 12, paddingBottom: 96 },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 15 },

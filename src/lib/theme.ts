@@ -10,6 +10,9 @@ const light = {
   track: '#E4E8F0',
   done: '#1E9E62',
   danger: '#C8372D',
+  red: '#D64541',
+  yellow: '#E0A100',
+  green: '#1E9E62',
 };
 
 const dark: typeof light = {
@@ -22,6 +25,9 @@ const dark: typeof light = {
   track: '#2A2E37',
   done: '#3CC383',
   danger: '#F06A5F',
+  red: '#F06A5F',
+  yellow: '#F2C14E',
+  green: '#3CC383',
 };
 
 export type Colors = typeof light;
