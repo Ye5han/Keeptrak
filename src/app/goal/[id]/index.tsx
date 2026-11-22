@@ -1,4 +1,4 @@
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { Link, Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -73,9 +73,21 @@ export default function GoalScreen() {
         )}
       </View>
 
-      {goal.milestones.map((m) => (
-        <MilestoneCard key={m.id} goalId={goal.id} milestone={m} />
-      ))}
+      {goal.milestones.length === 0 ? (
+        <View style={[styles.aiCard, { backgroundColor: colors.card, borderColor: colors.accent }]}>
+          <Text style={[styles.milestoneTitle, { color: colors.text }]}>Get your step plan</Text>
+          <Text style={{ color: colors.muted, fontSize: 14 }}>
+            Answer 3 quick questions and the AI will break this goal into milestones and steps.
+          </Text>
+          <Link href={{ pathname: '/goal/[id]/plan', params: { id: goal.id } }} asChild>
+            <Pressable style={StyleSheet.flatten([styles.aiButton, { backgroundColor: colors.accent }])} accessibilityRole="button">
+              <Text style={styles.aiButtonText}>Make my plan</Text>
+            </Pressable>
+          </Link>
+        </View>
+      ) : (
+        goal.milestones.map((m) => <MilestoneCard key={m.id} goalId={goal.id} milestone={m} />)
+      )}
 
       <View style={[styles.addRow, { borderColor: colors.border }]}>
         <TextInput
@@ -91,6 +103,14 @@ export default function GoalScreen() {
           <Text style={{ color: colors.accent, fontWeight: '600' }}>Add</Text>
         </Pressable>
       </View>
+
+      {goal.milestones.length > 0 && (
+        <Link href={{ pathname: '/goal/[id]/plan', params: { id: goal.id } }} asChild>
+          <Pressable style={styles.redo} accessibilityRole="button">
+            <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '600' }}>Redo this plan with AI</Text>
+          </Pressable>
+        </Link>
+      )}
     </ScrollView>
   );
 }
@@ -132,13 +152,18 @@ function MilestoneCard({ goalId, milestone }: { goalId: string; milestone: Miles
               ]}>
               {done && <Text style={styles.tick}>✓</Text>}
             </View>
-            <Text
-              style={[
-                styles.stepText,
-                { color: done ? colors.muted : colors.text, textDecorationLine: done ? 'line-through' : 'none' },
-              ]}>
-              {s.title}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={[
+                  styles.stepText,
+                  { color: done ? colors.muted : colors.text, textDecorationLine: done ? 'line-through' : 'none' },
+                ]}>
+                {s.title}
+              </Text>
+              {s.doneCheck && !done ? (
+                <Text style={{ color: colors.muted, fontSize: 13 }}>Done when: {s.doneCheck}</Text>
+              ) : null}
+            </View>
           </Pressable>
         );
       })}
@@ -174,8 +199,12 @@ const styles = StyleSheet.create({
   step: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
   box: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   tick: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', lineHeight: 16 },
-  stepText: { fontSize: 15, flex: 1 },
+  stepText: { fontSize: 15 },
   addStepRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderStyle: 'dashed', borderRadius: 14, paddingHorizontal: 14 },
   addInput: { flex: 1, fontSize: 15, paddingVertical: 10 },
+  aiCard: { borderWidth: 2, borderRadius: 14, padding: 16, gap: 10 },
+  aiButton: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  aiButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  redo: { alignItems: 'center', paddingVertical: 8 },
 });

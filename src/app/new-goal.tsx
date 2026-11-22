@@ -26,6 +26,7 @@ export default function NewGoalScreen() {
       targetDate: trimmedDate || null,
     });
     router.replace({ pathname: '/goal/[id]', params: { id } });
+    router.push({ pathname: '/goal/[id]/plan', params: { id } });
   };
 
   const inputStyle = [styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }];
@@ -77,7 +78,7 @@ export default function NewGoalScreen() {
           <Text style={styles.buttonText}>Create goal</Text>
         </Pressable>
         <Text style={[styles.hint, { color: colors.muted }]}>
-          You'll add steps on the next screen. AI step plans are coming soon.
+          Next, answer 3 quick questions and the AI will make your step plan.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

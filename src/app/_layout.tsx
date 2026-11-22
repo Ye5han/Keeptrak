@@ -18,7 +18,8 @@ export default function RootLayout() {
         }}>
         <Stack.Screen name="index" options={{ title: 'Keeptrak' }} />
         <Stack.Screen name="new-goal" options={{ title: 'New goal', presentation: 'modal' }} />
-        <Stack.Screen name="goal/[id]" options={{ title: '' }} />
+        <Stack.Screen name="goal/[id]/index" options={{ title: '' }} />
+        <Stack.Screen name="goal/[id]/plan" options={{ title: 'Step plan' }} />
       </Stack>
     </GoalsProvider>
   );

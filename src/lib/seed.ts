@@ -14,7 +14,7 @@ const milestones: Milestone[] = [
     steps: [
       step('s-plan', 'Write the MVP plan', true),
       step('s-repo', 'Create the GitHub repository', true),
-      step('s-shell', 'Build the app shell with a goals screen'),
+      step('s-shell', 'Build the app shell with a goals screen', true),
       step('s-phone', 'Run the app on an Android phone'),
       step('s-supabase', 'Create a Supabase project for sign-in and data'),
     ],

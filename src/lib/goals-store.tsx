@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
 
+import type { DraftMilestone } from './ai';
 import { newId } from './ids';
 import { seedGoals } from './seed';
 import type { Goal } from './types';
@@ -15,7 +16,8 @@ type Action =
   | { type: 'deleteGoal'; goalId: string }
   | { type: 'toggleStep'; goalId: string; milestoneId: string; stepId: string; now: string }
   | { type: 'addStep'; goalId: string; milestoneId: string; title: string; id: string }
-  | { type: 'addMilestone'; goalId: string; title: string; id: string };
+  | { type: 'addMilestone'; goalId: string; title: string; id: string }
+  | { type: 'setPlan'; goalId: string; milestones: Goal['milestones'] };
 
 function updateGoal(goals: Goal[], goalId: string, fn: (goal: Goal) => Goal): Goal[] {
   return goals.map((g) => (g.id === goalId ? fn(g) : g));
@@ -72,6 +74,11 @@ export function reducer(state: State, action: Action): State {
           milestones: [...goal.milestones, { id: action.id, title: action.title, steps: [] }],
         })),
       };
+    case 'setPlan':
+      return {
+        ...state,
+        goals: updateGoal(state.goals, action.goalId, (goal) => ({ ...goal, milestones: action.milestones })),
+      };
   }
 }
 
@@ -84,6 +91,8 @@ type Store = {
   toggleStep: (goalId: string, milestoneId: string, stepId: string) => void;
   addStep: (goalId: string, milestoneId: string, title: string) => void;
   addMilestone: (goalId: string, title: string) => void;
+  /** Replaces the goal's milestones with an AI plan the user accepted. */
+  applyPlan: (goalId: string, plan: DraftMilestone[]) => void;
 };
 
 const GoalsContext = createContext<Store | null>(null);
@@ -116,7 +125,7 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
           id,
           status: 'active',
           createdAt: new Date().toISOString(),
-          milestones: [{ id: newId(), title: 'First milestone', steps: [] }],
+          milestones: [],
         },
       });
       return id;
@@ -127,6 +136,16 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
     addStep: (goalId, milestoneId, title) =>
       dispatch({ type: 'addStep', goalId, milestoneId, title, id: newId() }),
     addMilestone: (goalId, title) => dispatch({ type: 'addMilestone', goalId, title, id: newId() }),
+    applyPlan: (goalId, plan) =>
+      dispatch({
+        type: 'setPlan',
+        goalId,
+        milestones: plan.map((m) => ({
+          id: newId(),
+          title: m.title,
+          steps: m.steps.map((s) => ({ id: newId(), title: s.title, doneCheck: s.doneCheck, doneAt: null, source: 'ai' as const })),
+        })),
+      }),
   };
 
   return <GoalsContext.Provider value={store}>{children}</GoalsContext.Provider>;

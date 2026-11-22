@@ -1,6 +1,8 @@
 export type Step = {
   id: string;
   title: string;
+  /** How you know the step is done. */
+  doneCheck?: string;
   doneAt: string | null;
   source: 'ai' | 'manual';
 };
