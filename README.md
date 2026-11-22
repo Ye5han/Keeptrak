@@ -6,7 +6,9 @@ The first goal in the app is building Keeptrak itself.
 
 ## What works today (week 1)
 
-- Home screen with every goal as a card: a progress gauge, steps done, target date, and the next step
+- Home opens on **Today**: one next step per goal, ticked in one tap, plus "Did a little" for busy days and one rest day per goal per week
+- After each tick, a quick Easy / OK / Hard and an optional note
+- A compact summary with an overall gauge and a discipline score (last 7 days, red / yellow / green)
 - Create a goal (title, why it matters, target date, where you are now)
 - Goal screen with a big gauge, milestones with their own progress bars, and steps you tick off
 - Add milestones and steps by hand

@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useReducer, type ReactNode } from
 import type { DraftMilestone } from './ai';
 import { newId } from './ids';
 import { seedGoals } from './seed';
-import type { Goal } from './types';
+import { localDay } from './discipline';
+import type { Feeling, Goal } from './types';
 
 const STORAGE_KEY = 'keeptrak.goals.v1';
 
@@ -17,7 +18,9 @@ type Action =
   | { type: 'toggleStep'; goalId: string; milestoneId: string; stepId: string; now: string }
   | { type: 'addStep'; goalId: string; milestoneId: string; title: string; id: string }
   | { type: 'addMilestone'; goalId: string; title: string; id: string }
-  | { type: 'setPlan'; goalId: string; milestones: Goal['milestones'] };
+  | { type: 'setPlan'; goalId: string; milestones: Goal['milestones'] }
+  | { type: 'toggleDay'; goalId: string; field: 'effortDays' | 'restDays'; day: string }
+  | { type: 'reflect'; goalId: string; stepId: string; feeling?: Feeling; note?: string };
 
 function updateGoal(goals: Goal[], goalId: string, fn: (goal: Goal) => Goal): Goal[] {
   return goals.map((g) => (g.id === goalId ? fn(g) : g));
@@ -79,6 +82,36 @@ export function reducer(state: State, action: Action): State {
         ...state,
         goals: updateGoal(state.goals, action.goalId, (goal) => ({ ...goal, milestones: action.milestones })),
       };
+    case 'toggleDay':
+      return {
+        ...state,
+        goals: updateGoal(state.goals, action.goalId, (goal) => {
+          const days = goal[action.field] ?? [];
+          return {
+            ...goal,
+            [action.field]: days.includes(action.day) ? days.filter((d) => d !== action.day) : [...days, action.day],
+          };
+        }),
+      };
+    case 'reflect':
+      return {
+        ...state,
+        goals: updateGoal(state.goals, action.goalId, (goal) => ({
+          ...goal,
+          milestones: goal.milestones.map((m) => ({
+            ...m,
+            steps: m.steps.map((s) =>
+              s.id !== action.stepId
+                ? s
+                : {
+                    ...s,
+                    ...(action.feeling !== undefined ? { feeling: action.feeling } : {}),
+                    ...(action.note !== undefined ? { note: action.note } : {}),
+                  }
+            ),
+          })),
+        })),
+      };
   }
 }
 
@@ -93,6 +126,11 @@ type Store = {
   addMilestone: (goalId: string, title: string) => void;
   /** Replaces the goal's milestones with an AI plan the user accepted. */
   applyPlan: (goalId: string, plan: DraftMilestone[]) => void;
+  /** "Did a little today" on a busy or low-energy day. Tapping again undoes it. */
+  toggleEffortToday: (goalId: string) => void;
+  /** Take today off this goal. Tapping again undoes it. */
+  toggleRestToday: (goalId: string) => void;
+  reflect: (goalId: string, stepId: string, reflection: { feeling?: Feeling; note?: string }) => void;
 };
 
 const GoalsContext = createContext<Store | null>(null);
@@ -136,6 +174,10 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
     addStep: (goalId, milestoneId, title) =>
       dispatch({ type: 'addStep', goalId, milestoneId, title, id: newId() }),
     addMilestone: (goalId, title) => dispatch({ type: 'addMilestone', goalId, title, id: newId() }),
+    toggleEffortToday: (goalId) =>
+      dispatch({ type: 'toggleDay', goalId, field: 'effortDays', day: localDay(new Date()) }),
+    toggleRestToday: (goalId) => dispatch({ type: 'toggleDay', goalId, field: 'restDays', day: localDay(new Date()) }),
+    reflect: (goalId, stepId, reflection) => dispatch({ type: 'reflect', goalId, stepId, ...reflection }),
     applyPlan: (goalId, plan) =>
       dispatch({
         type: 'setPlan',

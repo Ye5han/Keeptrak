@@ -5,7 +5,12 @@ export type Step = {
   doneCheck?: string;
   doneAt: string | null;
   source: 'ai' | 'manual';
+  /** How it felt, picked right after ticking it. */
+  feeling?: Feeling;
+  note?: string;
 };
+
+export type Feeling = 'easy' | 'ok' | 'hard';
 
 export type Milestone = {
   id: string;
@@ -24,4 +29,8 @@ export type Goal = {
   status: GoalStatus;
   createdAt: string;
   milestones: Milestone[];
+  /** Local days (YYYY-MM-DD) where the user did a little toward the goal without finishing a step. */
+  effortDays?: string[];
+  /** Local days (YYYY-MM-DD) the user took off this goal. They don't count against discipline. */
+  restDays?: string[];
 };

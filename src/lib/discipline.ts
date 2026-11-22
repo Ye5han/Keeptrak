@@ -7,7 +7,11 @@ import type { Goal } from './types';
  * - A goal counts from the day it was created until the day its last step was done.
  * - Today only counts once you have ticked something for that goal, so the score never drops
  *   during the day just because the day isn't over yet.
+ * - "Did a little" on a busy day counts as moving the goal forward.
+ * - A rest day is left out of the score, at most one per goal in the 7 days.
  */
+
+export const REST_DAYS_PER_WEEK = 1;
 
 export const WINDOW_DAYS = 7;
 
@@ -36,6 +40,14 @@ function lastDays(now: Date, count: number): string[] {
 
 export type DayResult = { day: string; hit: number; active: number };
 
+/** Whether this goal can still take a rest day in the current 7-day window. */
+export function canRest(goal: Goal, now: Date = new Date()): boolean {
+  const days = lastDays(now, WINDOW_DAYS);
+  const today = days[days.length - 1];
+  const used = (goal.restDays ?? []).filter((d) => days.includes(d) && d !== today).length;
+  return used < REST_DAYS_PER_WEEK;
+}
+
 export type Discipline = {
   /** null when there is nothing to score yet. */
   ratio: number | null;
@@ -51,12 +63,19 @@ export function disciplineScore(goals: Goal[], now: Date = new Date()): Discipli
   const perGoal = goals
     .map((goal) => {
       const steps = goal.milestones.flatMap((m) => m.steps);
-      const doneDays = new Set(steps.filter((s) => s.doneAt).map((s) => localDay(new Date(s.doneAt as string))));
+      const doneDays = new Set([
+        ...steps.filter((s) => s.doneAt).map((s) => localDay(new Date(s.doneAt as string))),
+        ...(goal.effortDays ?? []),
+      ]);
+      // Only the most recent allowed rest days in the window are honoured.
+      const restDays = new Set(
+        (goal.restDays ?? []).filter((d) => days.includes(d)).sort().slice(-REST_DAYS_PER_WEEK)
+      );
       const allDone = steps.length > 0 && steps.every((s) => s.doneAt);
       const finishedOn = allDone
         ? localDay(new Date(Math.max(...steps.map((s) => Date.parse(s.doneAt as string)))))
         : null;
-      return { start: localDay(new Date(goal.createdAt)), finishedOn, doneDays, hasSteps: steps.length > 0 };
+      return { start: localDay(new Date(goal.createdAt)), finishedOn, doneDays, restDays, hasSteps: steps.length > 0 };
     })
     .filter((g) => g.hasSteps);
 
@@ -68,6 +87,7 @@ export function disciplineScore(goals: Goal[], now: Date = new Date()): Discipli
       if (g.finishedOn && day > g.finishedOn) continue;
       const didSomething = g.doneDays.has(day);
       if (day === today && !didSomething) continue; // today isn't over yet
+      if (g.restDays.has(day) && !didSomething) continue; // a rest day doesn't count against you
       active += 1;
       if (didSomething) hit += 1;
     }
@@ -79,7 +99,9 @@ export function disciplineScore(goals: Goal[], now: Date = new Date()): Discipli
   const ratio = active === 0 ? null : hit / active;
 
   // Today's progress counts every goal that is still open today, ticked or not.
-  const openToday = perGoal.filter((g) => today >= g.start && !(g.finishedOn && today > g.finishedOn));
+  const openToday = perGoal.filter(
+    (g) => today >= g.start && !(g.finishedOn && today > g.finishedOn) && !(g.restDays.has(today) && !g.doneDays.has(today))
+  );
   const hitToday = openToday.filter((g) => g.doneDays.has(today)).length;
 
   return { ratio, band: ratio === null ? null : bandOf(ratio), days: results, today: { hit: hitToday, active: openToday.length } };
