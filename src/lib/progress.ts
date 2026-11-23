@@ -59,3 +59,10 @@ export function overallProgress(goals: Goal[]): Overall {
     stepsTotal: withSteps.reduce((n, p) => n + p.total, 0),
   };
 }
+
+export function formatMinutes(minutes: number | undefined): string | null {
+  if (!minutes) return null;
+  if (minutes < 60) return `about ${minutes} min`;
+  const hours = Math.round((minutes / 60) * 2) / 2;
+  return `about ${hours} hr`;
+}

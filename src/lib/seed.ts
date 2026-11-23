@@ -1,8 +1,9 @@
 import type { Goal, Milestone } from './types';
 
-const step = (id: string, title: string, done = false) => ({
+const step = (id: string, title: string, done = false, minutes?: number) => ({
   id,
   title,
+  minutes,
   doneAt: done ? '2026-11-22T00:00:00.000Z' : null,
   source: 'manual' as const,
 });
@@ -15,8 +16,8 @@ const milestones: Milestone[] = [
       step('s-plan', 'Write the MVP plan', true),
       step('s-repo', 'Create the GitHub repository', true),
       step('s-shell', 'Build the app shell with a goals screen', true),
-      step('s-phone', 'Run the app on an Android phone'),
-      step('s-supabase', 'Create a Supabase project for sign-in and data'),
+      step('s-phone', 'Run the app on an Android phone', false, 30),
+      step('s-supabase', 'Create a Supabase project for sign-in and data', false, 20),
     ],
   },
   {
@@ -67,6 +68,7 @@ export const seedGoals: Goal[] = [
     targetDate: '2027-01-17',
     status: 'active',
     createdAt: '2026-11-22T00:00:00.000Z',
+    dailyMinutes: 60,
     milestones,
   },
 ];

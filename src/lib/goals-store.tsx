@@ -119,7 +119,7 @@ type Store = {
   loaded: boolean;
   goals: Goal[];
   getGoal: (id: string) => Goal | undefined;
-  addGoal: (input: Pick<Goal, 'title' | 'why' | 'context' | 'targetDate'>) => string;
+  addGoal: (input: Pick<Goal, 'title' | 'why' | 'context' | 'targetDate' | 'dailyMinutes'>) => string;
   deleteGoal: (goalId: string) => void;
   toggleStep: (goalId: string, milestoneId: string, stepId: string) => void;
   addStep: (goalId: string, milestoneId: string, title: string) => void;
@@ -185,7 +185,14 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
         milestones: plan.map((m) => ({
           id: newId(),
           title: m.title,
-          steps: m.steps.map((s) => ({ id: newId(), title: s.title, doneCheck: s.doneCheck, doneAt: null, source: 'ai' as const })),
+          steps: m.steps.map((s) => ({
+            id: newId(),
+            title: s.title,
+            doneCheck: s.doneCheck,
+            minutes: s.minutes,
+            doneAt: null,
+            source: 'ai' as const,
+          })),
         })),
       }),
   };

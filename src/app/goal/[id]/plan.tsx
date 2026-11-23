@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 
 import { planner, type DraftMilestone, type GoalInput, type PlanAnswer, type PlanQuestion } from '@/lib/ai';
 import { useGoals } from '@/lib/goals-store';
+import { formatMinutes } from '@/lib/progress';
 import { useColors, type Colors } from '@/lib/theme';
 
 type Phase =
@@ -23,7 +24,7 @@ export default function PlanScreen() {
   const [typed, setTyped] = useState('');
 
   const input: GoalInput | null = goal
-    ? { title: goal.title, why: goal.why, context: goal.context, targetDate: goal.targetDate }
+    ? { title: goal.title, why: goal.why, context: goal.context, targetDate: goal.targetDate, dailyMinutes: goal.dailyMinutes ?? null }
     : null;
 
   useEffect(() => {
@@ -140,7 +141,9 @@ export default function PlanScreen() {
               <Text style={[styles.bullet, { color: colors.accent }]}>•</Text>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontSize: 15 }}>{s.title}</Text>
-                <Text style={{ color: colors.muted, fontSize: 13 }}>Done when: {s.doneCheck}</Text>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>
+                  {formatMinutes(s.minutes)} · Done when: {s.doneCheck}
+                </Text>
               </View>
             </View>
           ))}

@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Gauge } from '@/components/gauge';
 import { ProgressBar } from '@/components/progress-bar';
 import { useGoals } from '@/lib/goals-store';
-import { formatTargetDate, goalProgress, milestoneProgress, nextStep } from '@/lib/progress';
+import { formatMinutes, formatTargetDate, goalProgress, milestoneProgress, nextStep } from '@/lib/progress';
 import { useColors } from '@/lib/theme';
 import type { Milestone } from '@/lib/types';
 
@@ -164,8 +164,10 @@ function MilestoneCard({ goalId, milestone }: { goalId: string; milestone: Miles
                 ]}>
                 {s.title}
               </Text>
-              {s.doneCheck && !done ? (
-                <Text style={{ color: colors.muted, fontSize: 13 }}>Done when: {s.doneCheck}</Text>
+              {(s.doneCheck || s.minutes) && !done ? (
+                <Text style={{ color: colors.muted, fontSize: 13 }}>
+                  {[formatMinutes(s.minutes), s.doneCheck && `Done when: ${s.doneCheck}`].filter(Boolean).join(' · ')}
+                </Text>
               ) : null}
             </View>
           </Pressable>

@@ -3,6 +3,8 @@ export type Step = {
   title: string;
   /** How you know the step is done. */
   doneCheck?: string;
+  /** Rough time estimate in minutes. */
+  minutes?: number;
   doneAt: string | null;
   source: 'ai' | 'manual';
   /** How it felt, picked right after ticking it. */
@@ -26,6 +28,8 @@ export type Goal = {
   why: string;
   context: string;
   targetDate: string | null; // ISO date, YYYY-MM-DD
+  /** How much time the user can give this most days, in minutes. */
+  dailyMinutes?: number | null;
   status: GoalStatus;
   createdAt: string;
   milestones: Milestone[];

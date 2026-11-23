@@ -6,6 +6,13 @@ import { useGoals } from '@/lib/goals-store';
 import { isValidIsoDate } from '@/lib/progress';
 import { useColors } from '@/lib/theme';
 
+const TIME_OPTIONS = [
+  { label: '5 to 15 min', minutes: 15 },
+  { label: '15 to 30 min', minutes: 30 },
+  { label: '30 to 60 min', minutes: 60 },
+  { label: 'Over an hour', minutes: 90 },
+];
+
 export default function NewGoalScreen() {
   const { addGoal } = useGoals();
   const colors = useColors();
@@ -13,6 +20,7 @@ export default function NewGoalScreen() {
   const [why, setWhy] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [context, setContext] = useState('');
+  const [dailyMinutes, setDailyMinutes] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const save = () => {
@@ -24,6 +32,7 @@ export default function NewGoalScreen() {
       why: why.trim(),
       context: context.trim(),
       targetDate: trimmedDate || null,
+      dailyMinutes,
     });
     router.replace({ pathname: '/goal/[id]', params: { id } });
     router.push({ pathname: '/goal/[id]/plan', params: { id } });
@@ -52,6 +61,29 @@ export default function NewGoalScreen() {
             placeholder="To get fit before summer"
             placeholderTextColor={colors.muted}
           />
+        </Field>
+        <Field label="How much time can you give this most days?" colors={colors}>
+          <View style={styles.chips}>
+            {TIME_OPTIONS.map((o) => {
+              const active = dailyMinutes === o.minutes;
+              return (
+                <Pressable
+                  key={o.minutes}
+                  onPress={() => setDailyMinutes(active ? null : o.minutes)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={[
+                    styles.chip,
+                    {
+                      borderColor: active ? colors.accent : colors.border,
+                      backgroundColor: active ? colors.track : colors.card,
+                    },
+                  ]}>
+                  <Text style={{ color: colors.text, fontSize: 15 }}>{o.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </Field>
         <Field label="Target date (optional)" colors={colors}>
           <TextInput
@@ -101,5 +133,7 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   button: { borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { borderWidth: 1, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 14 },
   hint: { fontSize: 13, textAlign: 'center' },
 });

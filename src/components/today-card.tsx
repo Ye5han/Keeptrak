@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { canRest, localDay } from '@/lib/discipline';
 import { useGoals } from '@/lib/goals-store';
-import { nextStep } from '@/lib/progress';
+import { planner } from '@/lib/ai';
+import { formatMinutes, nextStep } from '@/lib/progress';
 import { useColors, type Colors } from '@/lib/theme';
 import type { Feeling, Goal, Step } from '@/lib/types';
 
@@ -20,6 +21,7 @@ export function TodayCard({ goal }: { goal: Goal }) {
   const colors = useColors();
   const [justDone, setJustDone] = useState<{ milestoneId: string; step: Step } | null>(null);
   const [note, setNote] = useState('');
+  const [tiny, setTiny] = useState<{ stepId: string; text: string | null } | null>(null);
 
   const today = localDay(new Date());
   const steps = goal.milestones.flatMap((m) => m.steps);
@@ -120,10 +122,33 @@ export function TodayCard({ goal }: { goal: Goal }) {
         <View style={{ gap: 10 }}>
           <View>
             <Text style={[styles.stepTitle, { color: colors.text }]}>{next.step.title}</Text>
-            {next.step.doneCheck ? (
-              <Text style={{ color: colors.muted, fontSize: 13 }}>Done when: {next.step.doneCheck}</Text>
+            {next.step.doneCheck || next.step.minutes ? (
+              <Text style={{ color: colors.muted, fontSize: 13 }}>
+                {[formatMinutes(next.step.minutes), next.step.doneCheck && `Done when: ${next.step.doneCheck}`]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
             ) : null}
           </View>
+          {tiny && tiny.stepId === next.step.id && (
+            <View style={[styles.tiny, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Text style={[styles.tinyLabel, { color: colors.muted }]}>5-MINUTE VERSION</Text>
+              <Text style={{ color: colors.text, fontSize: 15 }}>{tiny.text ?? 'Shrinking this step…'}</Text>
+              {tiny.text && (
+                <View style={styles.row}>
+                  <Chip
+                    colors={colors}
+                    label={littleToday ? '✓ Did it' : 'Did it'}
+                    active={littleToday}
+                    onPress={() => toggleEffortToday(goal.id)}
+                  />
+                  <Pressable onPress={() => setTiny(null)} accessibilityRole="button" hitSlop={6}>
+                    <Text style={{ color: colors.muted, fontSize: 14 }}>Hide</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          )}
           <View style={styles.row}>
             <Pressable
               onPress={() => {
@@ -140,6 +165,29 @@ export function TodayCard({ goal }: { goal: Goal }) {
               active={littleToday}
               onPress={() => toggleEffortToday(goal.id)}
             />
+            {!(tiny && tiny.stepId === next.step.id) && (
+              <Chip
+                colors={colors}
+                label="5-min version"
+                active={false}
+                onPress={() => {
+                  setTiny({ stepId: next.step.id, text: null });
+                  planner
+                    .shrinkStep(
+                      {
+                        title: goal.title,
+                        why: goal.why,
+                        context: goal.context,
+                        targetDate: goal.targetDate,
+                        dailyMinutes: goal.dailyMinutes ?? null,
+                      },
+                      next.step
+                    )
+                    .then((text) => setTiny({ stepId: next.step.id, text }))
+                    .catch(() => setTiny(null));
+                }}
+              />
+            )}
             {!movedToday && canRest(goal) && (
               <Chip colors={colors} label="Rest day" active={false} onPress={() => toggleRestToday(goal.id)} />
             )}
@@ -187,5 +235,7 @@ const styles = StyleSheet.create({
   chip: { borderWidth: 1, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 },
   noteRow: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12 },
   noteInput: { fontSize: 15, paddingVertical: 9 },
+  tiny: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 8 },
+  tinyLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
   small: { alignSelf: 'flex-start', paddingVertical: 4 },
 });

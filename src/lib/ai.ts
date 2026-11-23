@@ -11,6 +11,8 @@ export type GoalInput = {
   why: string;
   context: string;
   targetDate: string | null;
+  /** How much time the user can give this most days, in minutes. */
+  dailyMinutes: number | null;
 };
 
 export type PlanQuestion = {
@@ -21,12 +23,14 @@ export type PlanQuestion = {
 
 export type PlanAnswer = { questionId: string; question: string; answer: string | null };
 
-export type DraftStep = { title: string; doneCheck: string };
+export type DraftStep = { title: string; doneCheck: string; minutes: number };
 export type DraftMilestone = { title: string; steps: DraftStep[] };
 
 export interface Planner {
   getQuestions(goal: GoalInput): Promise<PlanQuestion[]>;
   getPlan(goal: GoalInput, answers: PlanAnswer[]): Promise<DraftMilestone[]>;
+  /** A tiny version of a step for a low-energy day, about 5 minutes. */
+  shrinkStep(goal: GoalInput, step: { title: string; doneCheck?: string }): Promise<string>;
 }
 
 type Kind = 'fitness' | 'learning' | 'building' | 'money' | 'general';
@@ -46,36 +50,48 @@ function kindOf(goal: GoalInput): Kind {
 const QUESTIONS: Record<Kind, PlanQuestion[]> = {
   fitness: [
     { id: 'level', question: 'Where are you starting from?', options: ['Just starting out', 'Train now and then', 'Train most weeks'] },
-    { id: 'time', question: 'How many sessions a week can you do?', options: ['2', '3 to 4', '5 or more'] },
+    { id: 'aim', question: 'What would a great result look like?', options: ['Just finish', 'Beat a target time', 'Feel fitter day to day'] },
     { id: 'limits', question: 'Anything that could get in the way?', options: ['An old injury', 'Busy schedule', 'Nothing major'] },
   ],
   learning: [
     { id: 'level', question: 'How much do you already know?', options: ['Complete beginner', 'Know the basics', 'Fairly confident'] },
-    { id: 'time', question: 'How many hours a week can you study?', options: ['1 to 2', '3 to 5', '6 or more'] },
+    { id: 'aim', question: 'What will you use it for?', options: ['An exam or certificate', 'Work', 'Personal interest'] },
     { id: 'style', question: 'How do you learn best?', options: ['Videos and courses', 'Books and notes', 'Doing it hands-on'] },
   ],
   building: [
     { id: 'level', question: 'How far along are you?', options: ['Just an idea', 'Planned it out', 'Already started'] },
-    { id: 'time', question: 'How many hours a week can you put in?', options: ['Under 5', '5 to 15', 'More than 15'] },
+    { id: 'aim', question: 'What does a first win look like?', options: ['First person uses it', 'First sale or sign-up', 'It goes live'] },
     { id: 'help', question: 'Will you do it alone or with help?', options: ['On my own', 'With a friend or team', 'Paying someone for parts'] },
   ],
   money: [
     { id: 'level', question: 'Do you track your spending today?', options: ['Not really', 'Roughly', 'Yes, closely'] },
-    { id: 'time', question: 'How much could you set aside each month?', options: ['A little', 'A fair amount', 'Not sure yet'] },
+    { id: 'aim', question: 'What is the money for?', options: ['A safety buffer', 'Something specific', 'Paying off debt'] },
     { id: 'limits', question: 'What usually gets in the way?', options: ['Unexpected bills', 'Impulse spending', 'Irregular income'] },
   ],
   general: [
     { id: 'level', question: 'Where are you starting from?', options: ['From scratch', 'Made a start', 'Partway there'] },
-    { id: 'time', question: 'How many hours a week can you give it?', options: ['1 to 2', '3 to 5', '6 or more'] },
+    { id: 'aim', question: 'How will you know it is done?', options: ['Something I can show', 'A number I hit', 'A feeling or habit'] },
     { id: 'limits', question: 'What is most likely to slow you down?', options: ['Time', 'Not knowing how', 'Staying motivated'] },
   ],
 };
 
-const step = (title: string, doneCheck: string): DraftStep => ({ title, doneCheck });
+/** Rough minutes for a step, from the kind of action it starts with. */
+function estimate(title: string): number {
+  const t = title.toLowerCase();
+  const stated = t.match(/(\d+)[- ]minutes?/);
+  if (stated) return Number(stated[1]);
+  if (/^(pick|choose|set|open|block|write down|write one|describe|add a|agree|take one full rest)/.test(t)) return 10;
+  if (/^(list|check|review|cut|book|take a quick|find|share|start a small|learn the)/.test(t)) return 20;
+  if (/^(talk|write a|collect|do a 20|do one|practise|repeat|spend 1)/.test(t)) return 30;
+  if (/^(do a full|finish|build|make the|complete|add one|spend 2)/.test(t)) return 60;
+  return 30;
+}
+
+const step = (title: string, doneCheck: string): DraftStep => ({ title, doneCheck, minutes: estimate(title) });
 
 function plansFor(kind: Kind, goal: GoalInput, answer: (id: string) => string | null): DraftMilestone[] {
   const beginner = /just|complete beginner|from scratch|not really|idea/i.test(answer('level') ?? '');
-  const light = /^(2|1 to 2|under 5|a little)$/i.test(answer('time') ?? '');
+  const light = goal.dailyMinutes !== null && goal.dailyMinutes <= 15;
   const g = goal.title;
   switch (kind) {
     case 'fitness':
@@ -251,7 +267,17 @@ export const samplePlanner: Planner = {
   async getPlan(goal, answers) {
     await wait(1200);
     const answer = (id: string) => answers.find((a) => a.questionId === id)?.answer ?? null;
-    return plansFor(kindOf(goal), goal, answer);
+    const budget = goal.dailyMinutes;
+    // Size each step to the time the user said they have most days.
+    return plansFor(kindOf(goal), goal, answer).map((m) => ({
+      ...m,
+      steps: m.steps.map((s) => ({ ...s, minutes: budget ? Math.min(s.minutes, budget) : s.minutes })),
+    }));
+  },
+  async shrinkStep(_goal, s) {
+    await wait(600);
+    const lower = s.title.charAt(0).toLowerCase() + s.title.slice(1);
+    return `Set a 5-minute timer and just start: ${lower}. Stop when it rings.`;
   },
 };
 
