@@ -58,8 +58,11 @@ const milestones: Milestone[] = [
   },
 ];
 
-/** The first goal in the app is building the app itself. */
-export const seedGoals: Goal[] = [
+/**
+ * The goal of building Keeptrak itself, with the MVP roadmap as its steps.
+ * Testers start with no goals; the owner adds this one with a long-press on the home logo.
+ */
+export const starterGoals: Goal[] = [
   {
     id: 'g-keeptrak',
     title: 'Launch the Keeptrak beta',

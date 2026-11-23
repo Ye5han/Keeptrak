@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useReducer, useState, type ReactN
 
 import type { DraftMilestone } from './ai';
 import { newId } from './ids';
-import { seedGoals } from './seed';
+import { starterGoals } from './seed';
 import { localDay } from './discipline';
 import type { Feeling, Goal } from './types';
 
@@ -127,6 +127,8 @@ type Store = {
   getGoal: (id: string) => Goal | undefined;
   addGoal: (input: Pick<Goal, 'title' | 'why' | 'context' | 'targetDate' | 'dailyMinutes'>) => string;
   deleteGoal: (goalId: string) => void;
+  /** Adds the Keeptrak build goal if it isn't there yet. Hidden, for the owner only. */
+  addStarterGoal: () => void;
   toggleStep: (goalId: string, milestoneId: string, stepId: string) => void;
   addStep: (goalId: string, milestoneId: string, title: string) => void;
   addMilestone: (goalId: string, title: string) => void;
@@ -153,8 +155,8 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => dispatch({ type: 'loaded', goals: raw ? (JSON.parse(raw) as Goal[]) : seedGoals }))
-      .catch(() => dispatch({ type: 'loaded', goals: seedGoals }));
+      .then((raw) => dispatch({ type: 'loaded', goals: raw ? (JSON.parse(raw) as Goal[]) : [] }))
+      .catch(() => dispatch({ type: 'loaded', goals: [] }));
   }, []);
 
   useEffect(() => {
@@ -188,6 +190,11 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       return id;
     },
     deleteGoal: (goalId) => dispatch({ type: 'deleteGoal', goalId }),
+    addStarterGoal: () => {
+      for (const goal of starterGoals) {
+        if (!state.goals.some((g) => g.id === goal.id)) dispatch({ type: 'addGoal', goal });
+      }
+    },
     toggleStep: (goalId, milestoneId, stepId) =>
       dispatch({ type: 'toggleStep', goalId, milestoneId, stepId, now: new Date().toISOString() }),
     addStep: (goalId, milestoneId, title) =>

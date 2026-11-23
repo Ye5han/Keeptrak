@@ -41,7 +41,8 @@ const SLIDES = [
 export default function WelcomeScreen() {
   const { finishWelcome, goals } = useGoals();
   const colors = useColors();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const artScale = height < 700 ? 0.7 : 1;
   const pageWidth = Math.min(width, 480);
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
   const [page, setPage] = useState(0);
@@ -87,16 +88,24 @@ export default function WelcomeScreen() {
           onScroll={Platform.OS === 'web' ? onScroll : undefined}
           scrollEventThrottle={32}
           keyboardShouldPersistTaps="handled"
-          style={{ flexGrow: 0, alignSelf: 'center', width: pageWidth }}>
+          style={{ flex: 1, alignSelf: 'center', width: pageWidth }}>
           {SLIDES.map((s) => (
-            <View key={s.title} style={[styles.page, { width: pageWidth }]}>
-              <Art kind={s.art} colors={colors} />
+            <ScrollView
+              key={s.title}
+              style={{ width: pageWidth }}
+              contentContainerStyle={styles.page}
+              showsVerticalScrollIndicator={false}>
+              <Art kind={s.art} colors={colors} scale={artScale} />
               <Text style={[styles.title, { color: colors.text }]}>{s.title}</Text>
               <Text style={[styles.body, { color: colors.muted }]}>{s.body}</Text>
-            </View>
+            </ScrollView>
           ))}
-          <View style={[styles.page, { width: pageWidth }]}>
-            <Logo colors={colors} size={96} />
+          <ScrollView
+            style={{ width: pageWidth }}
+            contentContainerStyle={styles.page}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <Logo colors={colors} size={Math.round(96 * artScale)} />
             <Text style={[styles.title, { color: colors.text }]}>What should we call you?</Text>
             <TextInput
               style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}
@@ -111,10 +120,8 @@ export default function WelcomeScreen() {
             <Text style={[styles.body, { color: colors.muted }]}>
               No account needed. Your goals stay on this phone.
             </Text>
-          </View>
+          </ScrollView>
         </ScrollView>
-
-        <View style={{ flex: 1 }} />
 
         <View style={styles.bottom}>
           <View style={styles.dots}>
@@ -139,12 +146,14 @@ export default function WelcomeScreen() {
   );
 }
 
-function Art({ kind, colors }: { kind: 'plan' | 'today' | 'gauge'; colors: Colors }) {
+function Art({ kind, colors, scale }: { kind: 'plan' | 'today' | 'gauge'; colors: Colors; scale: number }) {
+  const w = Math.round(220 * scale);
+  const h = Math.round(170 * scale);
   const card = colors.card;
   const line = colors.track;
   if (kind === 'plan') {
     return (
-      <Svg width={220} height={170} viewBox="0 0 220 170">
+      <Svg width={w} height={h} viewBox="0 0 220 170">
         <Rect x="20" y="10" width="180" height="150" rx="16" fill={card} stroke={colors.border} />
         <Rect x="40" y="30" width="100" height="12" rx="6" fill={colors.accent} />
         {[62, 92, 122].map((y, i) => (
@@ -158,7 +167,7 @@ function Art({ kind, colors }: { kind: 'plan' | 'today' | 'gauge'; colors: Color
   }
   if (kind === 'today') {
     return (
-      <Svg width={220} height={170} viewBox="0 0 220 170">
+      <Svg width={w} height={h} viewBox="0 0 220 170">
         {[10, 92].map((y, i) => (
           <G key={y}>
             <Rect x="20" y={y} width="180" height="68" rx="14" fill={card} stroke={i === 0 ? colors.green : colors.border} strokeWidth="2" />
@@ -172,7 +181,7 @@ function Art({ kind, colors }: { kind: 'plan' | 'today' | 'gauge'; colors: Color
     );
   }
   return (
-    <Svg width={220} height={170} viewBox="0 0 220 170">
+    <Svg width={w} height={h} viewBox="0 0 220 170">
       <Path d="M 40 140 A 70 70 0 0 1 180 140" fill="none" stroke={line} strokeWidth="18" strokeLinecap="round" />
       <Path d="M 40 140 A 70 70 0 0 1 160.6 90.5" fill="none" stroke={colors.green} strokeWidth="18" strokeLinecap="round" />
       <Path d="M 92 122 L 104 134 L 128 110" fill="none" stroke={colors.text} strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
@@ -184,11 +193,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, paddingTop: 12 },
   brand: { fontSize: 18, fontWeight: '700' },
-  page: { alignItems: 'center', paddingHorizontal: 32, paddingTop: 48, gap: 18 },
+  page: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 24, gap: 18 },
   title: { fontSize: 26, fontWeight: '700', textAlign: 'center' },
   body: { fontSize: 16, lineHeight: 23, textAlign: 'center' },
   input: { alignSelf: 'stretch', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 17 },
-  bottom: { paddingHorizontal: 24, paddingBottom: 28, gap: 20 },
+  bottom: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24, gap: 16 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { height: 8, borderRadius: 4 },
   button: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },

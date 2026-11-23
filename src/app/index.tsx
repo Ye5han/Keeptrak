@@ -65,6 +65,7 @@ function greeting(now: Date): string {
 
 function HomeHeader({ goals, name }: { goals: Goal[]; name: string }) {
   const colors = useColors();
+  const { addStarterGoal } = useGoals();
   const open = goals.filter((g) => {
     const p = goalProgress(g);
     return p.total === 0 || p.done < p.total;
@@ -74,7 +75,7 @@ function HomeHeader({ goals, name }: { goals: Goal[]; name: string }) {
   const movedToday = open.filter((g) => isMovedToday(g)).length;
   const sub =
     goals.length === 0
-      ? 'Let us set your first goal.'
+      ? "Let's set your first goal."
       : open.length === 0
         ? 'Every goal is complete. Time for a new one?'
         : movedToday === open.length
@@ -86,8 +87,11 @@ function HomeHeader({ goals, name }: { goals: Goal[]; name: string }) {
   return (
     <View style={{ gap: 12 }}>
       <View style={styles.brandRow}>
-        <Logo colors={colors} size={26} />
-        <Text style={[styles.brand, { color: colors.text }]}>Keeptrak</Text>
+        {/* A long-press on the logo adds the Keeptrak build goal (for the app's owner). */}
+        <Pressable onLongPress={addStarterGoal} delayLongPress={800} style={styles.brandPress}>
+          <Logo colors={colors} size={26} />
+          <Text style={[styles.brand, { color: colors.text }]}>Keeptrak</Text>
+        </Pressable>
         <View style={{ flex: 1 }} />
         <Text style={{ color: colors.muted, fontSize: 13 }}>{dateLabel}</Text>
       </View>
@@ -197,6 +201,7 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 12, paddingBottom: 96 },
   h1: { fontSize: 28, fontWeight: '700' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  brandPress: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brand: { fontSize: 17, fontWeight: '700' },
   emptyCard: { borderWidth: 1, borderRadius: 16, padding: 24, gap: 8, alignItems: 'center', marginTop: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
