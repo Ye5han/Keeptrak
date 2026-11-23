@@ -1,13 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useReducer, useState, type ReactNode } from 'react';
 
 import type { DraftMilestone } from './ai';
 import { newId } from './ids';
-import { seedGoals } from './seed';
+import { starterGoals } from './seed';
 import { localDay } from './discipline';
 import type { Feeling, Goal } from './types';
 
 const STORAGE_KEY = 'keeptrak.goals.v1';
+const PROFILE_KEY = 'keeptrak.profile.v1';
+
+export type Profile = { name: string; onboarded: boolean };
 
 type State = { loaded: boolean; goals: Goal[] };
 
@@ -117,10 +120,15 @@ export function reducer(state: State, action: Action): State {
 
 type Store = {
   loaded: boolean;
+  profile: Profile;
+  /** Saves the name and marks the welcome screens as seen. */
+  finishWelcome: (name: string) => void;
   goals: Goal[];
   getGoal: (id: string) => Goal | undefined;
   addGoal: (input: Pick<Goal, 'title' | 'why' | 'context' | 'targetDate' | 'dailyMinutes'>) => string;
   deleteGoal: (goalId: string) => void;
+  /** Adds the Keeptrak build goal if it isn't there yet. Hidden, for the owner only. */
+  addStarterGoal: () => void;
   toggleStep: (goalId: string, milestoneId: string, stepId: string) => void;
   addStep: (goalId: string, milestoneId: string, title: string) => void;
   addMilestone: (goalId: string, title: string) => void;
@@ -137,11 +145,18 @@ const GoalsContext = createContext<Store | null>(null);
 
 export function GoalsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { loaded: false, goals: [] });
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PROFILE_KEY)
+      .then((raw) => setProfile(raw ? (JSON.parse(raw) as Profile) : { name: '', onboarded: false }))
+      .catch(() => setProfile({ name: '', onboarded: false }));
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => dispatch({ type: 'loaded', goals: raw ? (JSON.parse(raw) as Goal[]) : seedGoals }))
-      .catch(() => dispatch({ type: 'loaded', goals: seedGoals }));
+      .then((raw) => dispatch({ type: 'loaded', goals: raw ? (JSON.parse(raw) as Goal[]) : [] }))
+      .catch(() => dispatch({ type: 'loaded', goals: [] }));
   }, []);
 
   useEffect(() => {
@@ -151,7 +166,13 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   const store: Store = {
-    loaded: state.loaded,
+    loaded: state.loaded && profile !== null,
+    profile: profile ?? { name: '', onboarded: false },
+    finishWelcome: (name) => {
+      const next = { name: name.trim(), onboarded: true };
+      setProfile(next);
+      AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next)).catch(() => {});
+    },
     goals: state.goals,
     getGoal: (id) => state.goals.find((g) => g.id === id),
     addGoal: (input) => {
@@ -169,6 +190,11 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
       return id;
     },
     deleteGoal: (goalId) => dispatch({ type: 'deleteGoal', goalId }),
+    addStarterGoal: () => {
+      for (const goal of starterGoals) {
+        if (!state.goals.some((g) => g.id === goal.id)) dispatch({ type: 'addGoal', goal });
+      }
+    },
     toggleStep: (goalId, milestoneId, stepId) =>
       dispatch({ type: 'toggleStep', goalId, milestoneId, stepId, now: new Date().toISOString() }),
     addStep: (goalId, milestoneId, title) =>

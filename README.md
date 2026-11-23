@@ -40,3 +40,7 @@ If the phone can't connect, run `npx expo start --tunnel` instead.
 ```bash
 npx tsc --noEmit   # typecheck
 ```
+
+## The Keeptrak build goal (owner only)
+
+New installs start with no goals. To add the "Launch the Keeptrak beta" goal, which tracks building this app, long-press the Keeptrak logo at the top of the home screen for about a second.

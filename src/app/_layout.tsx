@@ -16,7 +16,8 @@ export default function RootLayout() {
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}>
-        <Stack.Screen name="index" options={{ title: 'Keeptrak' }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="new-goal" options={{ title: 'New goal', presentation: 'modal' }} />
         <Stack.Screen name="goal/[id]/index" options={{ title: '' }} />
         <Stack.Screen name="goal/[id]/plan" options={{ title: 'Step plan' }} />

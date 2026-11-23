@@ -1,17 +1,23 @@
-import { Link } from 'expo-router';
+import { Link, Redirect } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Gauge } from '@/components/gauge';
+import { Logo } from '@/components/logo';
 import { TodayCard } from '@/components/today-card';
-import { bandOf, disciplineScore, type Band } from '@/lib/discipline';
+import { bandOf, disciplineScore, localDay, type Band } from '@/lib/discipline';
 import { useGoals } from '@/lib/goals-store';
 import { formatTargetDate, goalProgress, nextStep, overallProgress } from '@/lib/progress';
 import { useColors } from '@/lib/theme';
 import type { Goal } from '@/lib/types';
 
 export default function HomeScreen() {
-  const { loaded, goals } = useGoals();
+  const { loaded, goals, profile } = useGoals();
   const colors = useColors();
+
+  if (loaded && !profile.onboarded) {
+    return <Redirect href="/welcome" />;
+  }
 
   if (!loaded) {
     return (
@@ -22,17 +28,20 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <FlatList
         data={goals}
         keyExtractor={(g) => g.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => <GoalCard goal={item} />}
-        ListHeaderComponent={goals.length > 0 ? <HomeHeader goals={goals} /> : undefined}
+        ListHeaderComponent={<HomeHeader goals={goals} name={profile.name} />}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: colors.muted }]}>
-            No goals yet. Tap New goal to set your first one.
-          </Text>
+          <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>What do you want to achieve?</Text>
+            <Text style={{ color: colors.muted, fontSize: 15, textAlign: 'center' }}>
+              Add your first goal and Keeptrak will break it into small daily steps.
+            </Text>
+          </View>
         }
       />
       <Link href="/new-goal" asChild>
@@ -42,33 +51,71 @@ export default function HomeScreen() {
           <Text style={styles.fabText}>+ New goal</Text>
         </Pressable>
       </Link>
-    </View>
+    </SafeAreaView>
   );
 }
 
-function HomeHeader({ goals }: { goals: Goal[] }) {
+function greeting(now: Date): string {
+  const h = now.getHours();
+  if (h < 5) return 'Good evening';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function HomeHeader({ goals, name }: { goals: Goal[]; name: string }) {
   const colors = useColors();
+  const { addStarterGoal } = useGoals();
   const open = goals.filter((g) => {
     const p = goalProgress(g);
     return p.total === 0 || p.done < p.total;
   });
-  const dateLabel = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const movedToday = open.filter((g) => isMovedToday(g)).length;
+  const sub =
+    goals.length === 0
+      ? "Let's set your first goal."
+      : open.length === 0
+        ? 'Every goal is complete. Time for a new one?'
+        : movedToday === open.length
+          ? 'Every goal moved forward today. Nice work.'
+          : movedToday === 0
+            ? `${open.length === 1 ? 'Your goal is' : `${open.length} goals are`} waiting for today's step.`
+            : `${movedToday} of ${open.length} goals moved forward today. Keep going.`;
 
   return (
     <View style={{ gap: 12 }}>
-      <View>
-        <Text style={[styles.h1, { color: colors.text }]}>Today</Text>
-        <Text style={{ color: colors.muted, fontSize: 14 }}>
-          {dateLabel} · one step per goal is enough
-        </Text>
+      <View style={styles.brandRow}>
+        {/* A long-press on the logo adds the Keeptrak build goal (for the app's owner). */}
+        <Pressable onLongPress={addStarterGoal} delayLongPress={800} style={styles.brandPress}>
+          <Logo colors={colors} size={26} />
+          <Text style={[styles.brand, { color: colors.text }]}>Keeptrak</Text>
+        </Pressable>
+        <View style={{ flex: 1 }} />
+        <Text style={{ color: colors.muted, fontSize: 13 }}>{dateLabel}</Text>
       </View>
+      <View style={{ gap: 4, marginTop: 6 }}>
+        <Text style={[styles.h1, { color: colors.text }]}>
+          {greeting(now)}
+          {name ? `, ${name}` : ''}
+        </Text>
+        <Text style={{ color: colors.muted, fontSize: 15 }}>{sub}</Text>
+      </View>
+      {open.length > 0 && <Text style={[styles.section, { color: colors.text }]}>Today</Text>}
       {open.map((g) => (
         <TodayCard key={g.id} goal={g} />
       ))}
-      <SummaryCard goals={goals} />
-      <Text style={[styles.section, { color: colors.text }]}>Your goals</Text>
+      {goals.length > 0 && <SummaryCard goals={goals} />}
+      {goals.length > 0 && <Text style={[styles.section, { color: colors.text }]}>Your goals</Text>}
     </View>
   );
+}
+
+function isMovedToday(goal: Goal): boolean {
+  const today = localDay(new Date());
+  const ticked = goal.milestones.some((m) => m.steps.some((s) => s.doneAt && localDay(new Date(s.doneAt)) === today));
+  return ticked || (goal.effortDays ?? []).includes(today);
 }
 
 const BAND_TEXT: Record<Band, string> = {
@@ -152,8 +199,12 @@ function GoalCard({ goal }: { goal: Goal }) {
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { padding: 16, gap: 12, paddingBottom: 96 },
-  empty: { textAlign: 'center', marginTop: 48, fontSize: 15 },
-  h1: { fontSize: 26, fontWeight: '700' },
+  h1: { fontSize: 28, fontWeight: '700' },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  brandPress: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brand: { fontSize: 17, fontWeight: '700' },
+  emptyCard: { borderWidth: 1, borderRadius: 16, padding: 24, gap: 8, alignItems: 'center', marginTop: 8 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
   summary: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 12, marginTop: 8 },
   gauges: { flexDirection: 'row', justifyContent: 'space-around' },
   gaugeBox: { alignItems: 'center', gap: 6 },
