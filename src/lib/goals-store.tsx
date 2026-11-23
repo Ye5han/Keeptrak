@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useReducer, useState, type ReactNode } from 'react';
 
 import type { DraftMilestone } from './ai';
 import { newId } from './ids';
@@ -8,6 +8,9 @@ import { localDay } from './discipline';
 import type { Feeling, Goal } from './types';
 
 const STORAGE_KEY = 'keeptrak.goals.v1';
+const PROFILE_KEY = 'keeptrak.profile.v1';
+
+export type Profile = { name: string; onboarded: boolean };
 
 type State = { loaded: boolean; goals: Goal[] };
 
@@ -117,6 +120,9 @@ export function reducer(state: State, action: Action): State {
 
 type Store = {
   loaded: boolean;
+  profile: Profile;
+  /** Saves the name and marks the welcome screens as seen. */
+  finishWelcome: (name: string) => void;
   goals: Goal[];
   getGoal: (id: string) => Goal | undefined;
   addGoal: (input: Pick<Goal, 'title' | 'why' | 'context' | 'targetDate' | 'dailyMinutes'>) => string;
@@ -137,6 +143,13 @@ const GoalsContext = createContext<Store | null>(null);
 
 export function GoalsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { loaded: false, goals: [] });
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PROFILE_KEY)
+      .then((raw) => setProfile(raw ? (JSON.parse(raw) as Profile) : { name: '', onboarded: false }))
+      .catch(() => setProfile({ name: '', onboarded: false }));
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
@@ -151,7 +164,13 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   const store: Store = {
-    loaded: state.loaded,
+    loaded: state.loaded && profile !== null,
+    profile: profile ?? { name: '', onboarded: false },
+    finishWelcome: (name) => {
+      const next = { name: name.trim(), onboarded: true };
+      setProfile(next);
+      AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next)).catch(() => {});
+    },
     goals: state.goals,
     getGoal: (id) => state.goals.find((g) => g.id === id),
     addGoal: (input) => {
