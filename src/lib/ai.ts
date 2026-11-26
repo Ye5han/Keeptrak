@@ -1,9 +1,9 @@
 /**
  * The AI step planner.
  *
- * For now this is a sample planner that runs on the phone, so the question and plan screens can be
- * tried before the real AI is connected. In weeks 3-4 `planner` will call a server function that asks
- * Claude, with the same inputs and outputs.
+ * `planner` asks Claude through the Supabase function in supabase/functions/plan-ai. If that call
+ * fails (no internet, function not switched on, timeout), it quietly falls back to the sample planner
+ * below, which runs on the phone, so the user is never stuck.
  */
 
 export type GoalInput = {
@@ -281,4 +281,71 @@ export const samplePlanner: Planner = {
   },
 };
 
-export const planner: Planner = samplePlanner;
+// --- Real AI, through Supabase ---
+// The publishable key is safe to ship in the app. The Anthropic key lives only in Supabase secrets.
+const SUPABASE_URL = 'https://kupgwdyygtyqnvgxmlfh.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_LN2q8hLz1dUfWc7rHt1_uA_k0RDuwFW';
+const AI_URL = `${SUPABASE_URL}/functions/v1/plan-ai`;
+
+async function callAi<T>(body: object, timeoutMs: number): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(AI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`AI ${res.status}`);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function warnFallback(what: string, err: unknown) {
+  console.warn(`[keeptrak] Real AI ${what} failed, using sample planner instead:`, err);
+}
+
+export const remotePlanner: Planner = {
+  async getQuestions(goal) {
+    try {
+      const { questions } = await callAi<{ questions: PlanQuestion[] }>({ action: 'questions', goal }, 30_000);
+      if (!Array.isArray(questions) || questions.length === 0) throw new Error('empty');
+      return questions;
+    } catch (err) {
+      warnFallback('questions', err);
+      return samplePlanner.getQuestions(goal);
+    }
+  },
+  async getPlan(goal, answers) {
+    try {
+      const { milestones } = await callAi<{ milestones: DraftMilestone[] }>(
+        { action: 'plan', goal, answers },
+        90_000,
+      );
+      if (!Array.isArray(milestones) || milestones.length === 0) throw new Error('empty');
+      return milestones;
+    } catch (err) {
+      warnFallback('plan', err);
+      return samplePlanner.getPlan(goal, answers);
+    }
+  },
+  async shrinkStep(goal, step) {
+    try {
+      const { step: small } = await callAi<{ step: string }>({ action: 'shrink', goal, step }, 30_000);
+      if (typeof small !== 'string' || !small.trim()) throw new Error('empty');
+      return small;
+    } catch (err) {
+      warnFallback('5-minute version', err);
+      return samplePlanner.shrinkStep(goal, step);
+    }
+  },
+};
+
+export const planner: Planner = remotePlanner;
