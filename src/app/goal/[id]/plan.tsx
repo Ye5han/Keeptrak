@@ -73,6 +73,9 @@ export default function PlanScreen() {
         <Text style={[styles.loading, { color: colors.muted }]}>
           {phase.kind === 'loadingQuestions' ? 'Thinking about your goal…' : 'Building your step plan…'}
         </Text>
+        {phase.kind === 'planning' && (
+          <Text style={[styles.loadingHint, { color: colors.muted }]}>This can take up to a minute.</Text>
+        )}
       </View>
     );
   }
@@ -188,6 +191,7 @@ function PrimaryButton({ colors, label, onPress }: { colors: Colors; label: stri
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   loading: { marginTop: 16, fontSize: 15 },
+  loadingHint: { marginTop: 6, fontSize: 13 },
   page: { padding: 20, gap: 14, paddingBottom: 48 },
   counter: { fontSize: 13 },
   question: { fontSize: 22, fontWeight: '700' },

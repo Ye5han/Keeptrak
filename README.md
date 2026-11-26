@@ -44,3 +44,17 @@ npx tsc --noEmit   # typecheck
 ## The Keeptrak build goal (owner only)
 
 New installs start with no goals. To add the "Launch the Keeptrak beta" goal, which tracks building this app, long-press the Keeptrak logo at the top of the home screen for about a second.
+
+## Real AI (Supabase + Claude)
+
+The app asks Claude through a Supabase Edge Function in `supabase/functions/plan-ai`.
+If the function can't be reached, the app falls back to the built-in sample planner.
+
+To switch it on:
+1. Supabase dashboard → Edge Functions → Secrets: add `ANTHROPIC_API_KEY` (your key from console.anthropic.com). Never commit it.
+2. Edge Functions → Deploy a new function → Via editor. Name it `plan-ai` and paste in `supabase/functions/plan-ai/index.ts`. Deploy.
+3. Open the function's settings and turn **off** "Verify JWT" (the app sends the publishable key, which isn't a JWT).
+
+Or with the Supabase CLI: `supabase secrets set ANTHROPIC_API_KEY=...` then `supabase functions deploy plan-ai --no-verify-jwt`.
+
+Optional: set a secret `KEEPTRAK_MODEL` to change which Claude model is used (default `claude-opus-5-5`).
